@@ -1,0 +1,73 @@
+import pandas as pd
+import numpy as np
+import os
+import streamlit as st
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# change path to downloads file in order to read in csv
+os.chdir('/Users/ecuadorianwifi/Downloads')
+
+# read in csv
+df = pd.read_csv('animes.csv')
+
+# drop unnecessary columns
+df = df[['title', 'synopsis', 'genre', 'aired', 'episodes', 'popularity']]
+
+# create new dataset, cleansed from the duplicated names of the last one.
+df1 = df.drop_duplicates(subset = ['title'])
+
+# cleanse data of null values and correctly index it
+df1 = df1[df1['synopsis'].notna()]
+df1.reset_index(inplace=True)
+
+# turns the synopses into lowercase and single spaced so that it can be turned into wordsoup
+def process_text(text):
+    text = ' '.join(text.split())
+    text = text.lower()
+    return text
+
+# still don't know what lambda does but oh well
+df1['synopsis'] = df1.apply(lambda x: process_text(x.synopsis),axis=1)
+
+# 1. declare and assign vectorizer, 2. turn wordsoup synopses into vectors (matrix), 3. use vector matrix to construct cosine sim matrix (x & y axis)
+vectorizer = TfidfVectorizer(stop_words = 'english')
+vector_matrix = vectorizer.fit_transform(df1['synopsis'])
+cosine_sim_matrix = cosine_similarity(vector_matrix, vector_matrix)
+
+# returns the index of a certain title
+def index_from_title (title, df1):
+    return df1[df1['title'] == title].index.values[0]
+
+# returns a list of titles that are recommended from a single given title
+def recommend (title, recommendations, df1, cosine_sim_matrix):
+    index = index_from_title(title, df1)
+    similarity_score = list(enumerate(cosine_sim_matrix[index]))
+    similarity_score = sorted(similarity_score, key = lambda x: x[1], reverse = True)
+    recommendations_indices = [t[0] for t in similarity_score[1:(recommendations + 1)]]
+    return df1['title'].iloc[recommendations_indices]
+
+# forms the dataframe that holds the recommendations
+def form (results):
+    index = 0
+    arr = []
+    dfx = df.drop_duplicates()
+    for i in results:
+        index = dfx[dfx['title'] == i].index.values
+        df2 = pd.DataFrame({'Popularity': [dfx['popularity'].loc[index].values], 'Title': [dfx['title'].loc[index].values], 'Synopsis': [dfx['synopsis'].loc[index].values], 'Genres': [dfx['genre'].loc[index].values], 'Aired': [dfx['aired'].loc[index].values], 'Episodes': [dfx['episodes'].loc[index].values]})
+        arr.append(df2)
+    df3 = pd.concat(arr)
+    return df3
+
+# create UI using streamlit
+st.header('Anime recommendations')
+
+# selectbox gives options of every anime in the dataframe, placeholder is set to boku no pico. recs takes the amount of recommendations people want to result
+input_anime = st.selectbox(label = 'Enter an anime; find more just like it. 😻', options = df1['title']) # index = 2563)
+recs = st.number_input(label = 'Enter # of recommendations: 👇', min_value = 1, max_value = 500) # value = 69)
+
+# create a new dataframe of recommendations for the user and display it. df includes the title, synopsis, popularity, genres, air date, and # of episodes.
+if input_anime and recs:
+    results = recommend(input_anime, recs, df1, cosine_sim_matrix)
+    st.dataframe(form(results), use_container_width = True)
+    st.write('Please ignore any discrepancies, and happy watching! 😄')
