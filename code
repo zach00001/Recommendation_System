@@ -27,7 +27,7 @@ def process_text(text):
     text = text.lower()
     return text
 
-# still don't know what lambda does but oh well
+# subject the synopses to wordsoup
 df1['synopsis'] = df1.apply(lambda x: process_text(x.synopsis),axis=1)
 
 # 1. declare and assign vectorizer, 2. turn wordsoup synopses into vectors (matrix), 3. use vector matrix to construct cosine sim matrix (x & y axis)
@@ -63,11 +63,11 @@ def form (results):
 st.header('Anime recommendations')
 
 # selectbox gives options of every anime in the dataframe, placeholder is set to boku no pico. recs takes the amount of recommendations people want to result
-input_anime = st.selectbox(label = 'Enter an anime; find more just like it. 😻', options = df1['title']) # index = 2563)
-recs = st.number_input(label = 'Enter # of recommendations: 👇', min_value = 1, max_value = 500) # value = 69)
+input_anime = st.selectbox(label = 'Enter an anime:', options = df1['title']) # index = 2563)
+recs = st.number_input(label = 'Enter # of recommendations: ', min_value = 1, max_value = 500) # value = 69)
 
 # create a new dataframe of recommendations for the user and display it. df includes the title, synopsis, popularity, genres, air date, and # of episodes.
 if input_anime and recs:
     results = recommend(input_anime, recs, df1, cosine_sim_matrix)
     st.dataframe(form(results), use_container_width = True)
-    st.write('Please ignore any discrepancies, and happy watching! 😄')
+    st.write('Please ignore any discrepancies!')
